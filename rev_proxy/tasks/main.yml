@@ -1,0 +1,33 @@
+---
+# tasks file for rev_proxy
+
+- name: Install required packages
+  ansible.builtin.include_tasks:
+    file: install_pkgs.yml
+
+- name: Start services
+  ansible.builtin.service:
+    name: nginx
+    state: started
+    enabled: true
+
+- name: Copy main configuration file
+  ansible.builtin.template:
+    dest: /etc/nginx/nginx.conf
+    src: nginx_conf.j2
+  notify: Restart nginx
+
+- name: Create nginx site-available dir
+  ansible.builtin.file:
+    path: /etc/nginx/sites-available
+    state: directory
+
+- name: Copy rev proxy configuration file
+  ansible.builtin.template:
+    src: nginx_sites_available_default.j2
+    dest: /etc/nginx/sites-available/default
+    notify: Restart nginx
+
+- name: Run gunicorn daemonized
+  become: false
+  ansible.builtin.command: gunicorn -D --chdir /home/deploy/ app:app -b "0.0.0.0"
